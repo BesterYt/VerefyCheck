@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cloudflare Media Receiver</title>
+</head>
+<body>
+  <h1>Incoming Media Streams</h1>
+  <div id="info"></div>
+  <video id="remoteCam" autoplay playsinline muted style="width: 45%;"></video>
+  <video id="remoteScreen" autoplay playsinline muted style="width: 45%;"></video>
+  <script>
+    // Имитируем получение информации о пользователе и стриме
+    async function initReceiver() {
+      // Получение IP и устройства — обычно делается на серверной стороне
+      const ip = (await fetch('https://api.ipify.org?format=json')).json().then(data => data.ip);
+      const device = navigator.userAgent;
+
+      document.getElementById('info').innerText = `Device: ${device}\nIP: ${await ip}`;
+
+      // Эмуляция подключения к WebRTC (в реальности сюда придёт поток с другого клиента)
+      const streamCam = new MediaStream();
+      const streamScreen = new MediaStream();
+
+      document.getElementById('remoteCam').srcObject = streamCam;
+      document.getElementById('remoteScreen').srcObject = streamScreen;
+
+      // Здесь должен быть WebRTC сигналинг и приём mediaTracks
+    }
+
+    initReceiver();
+  </script>
+</body>
+</html>

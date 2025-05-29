@@ -1,33 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Cloudflare Media Receiver</title>
+  <title>Receiver</title>
 </head>
 <body>
-  <h1>Incoming Media Streams</h1>
-  <div id="info"></div>
-  <video id="remoteCam" autoplay playsinline muted style="width: 45%;"></video>
-  <video id="remoteScreen" autoplay playsinline muted style="width: 45%;"></video>
+  <h1>Viewer</h1>
+  <p id="status">Waiting for offer...</p>
+  <video id="remoteVideo" autoplay playsinline controls style="width: 80%;"></video>
   <script>
-    // Имитируем получение информации о пользователе и стриме
-    async function initReceiver() {
-      // Получение IP и устройства — обычно делается на серверной стороне
-      const ip = (await fetch('https://api.ipify.org?format=json')).json().then(data => data.ip);
-      const device = navigator.userAgent;
+    const status = document.getElementById('status');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const peer = new RTCPeerConnection();
 
-      document.getElementById('info').innerText = `Device: ${device}\nIP: ${await ip}`;
+    peer.ontrack = (event) => {
+      remoteVideo.srcObject = event.streams[0];
+    };
 
-      // Эмуляция подключения к WebRTC (в реальности сюда придёт поток с другого клиента)
-      const streamCam = new MediaStream();
-      const streamScreen = new MediaStream();
+    peer.onicecandidate = e => {
+      if (e.candidate) return;
+      // Отправка answer на сервер
+      fetch("https://shortname.ivantimockin19.workers.dev/answer", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(peer.localDescription)
+      });
+    };
 
-      document.getElementById('remoteCam').srcObject = streamCam;
-      document.getElementById('remoteScreen').srcObject = streamScreen;
+    async function waitForOffer() {
+      try {
+        const poll = setInterval(async () => {
+          const res = await fetch("https://shortname.ivantimockin19.workers.dev/offer");
+          if (!res.ok) return;
 
-      // Здесь должен быть WebRTC сигналинг и приём mediaTracks
+          clearInterval(poll);
+          const offer = await res.json();
+          await peer.setRemoteDescription(new RTCSessionDescription(offer));
+
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+
+          status.textContent = "Connected";
+        }, 2000);
+      } catch (err) {
+        status.textContent = "Error receiving offer";
+        console.error(err);
+      }
     }
 
-    initReceiver();
+    waitForOffer();
   </script>
 </body>
 </html>
